@@ -1,0 +1,107 @@
+type Error = variant {
+  InvalidInput : record { msg : text };
+  NotFound : record { msg : text };
+  Unauthorized : record { msg : text };
+  AlreadyExists : record { msg : text };
+};
+type Event = record {
+  id : nat64;
+  venue : text;
+  created_at : nat64;
+  dj_name : text;
+  scheduled_at : nat64;
+  capacity : nat64;
+  event_name : text;
+};
+type EventPayload = record {
+  venue : text;
+  dj_name : text;
+  scheduled_at : nat64;
+  capacity : nat64;
+  event_name : text;
+};
+type LeaderboardEntry = record {
+  avg_rating : float64;
+  total_tips : nat64;
+  dj_name : text;
+  total_ratings : nat8;
+};
+type Playlist = record {
+  id : nat64;
+  created_at : nat64;
+  song_list : vec text;
+  dj_name : text;
+  event_id : nat64;
+};
+type PlaylistPayload = record {
+  song_list : vec text;
+  dj_name : text;
+  event_id : nat64;
+};
+type Rating = record {
+  id : nat64;
+  review : text;
+  created_at : nat64;
+  user_id : nat64;
+  dj_name : text;
+  rating : nat8;
+};
+type RatingPayload = record {
+  review : text;
+  user_id : nat64;
+  dj_name : text;
+  rating : nat8;
+};
+type RequestStatus = variant { Played; Pending };
+type Result = variant { Ok : Event; Err : Error };
+type Result_1 = variant { Ok : Playlist; Err : Error };
+type Result_2 = variant { Ok : Rating; Err : Error };
+type Result_3 = variant { Ok : SongRequest; Err : Error };
+type Result_4 = variant { Ok : Tip; Err : Error };
+type Result_5 = variant { Ok : User; Err : Error };
+type Result_6 = variant { Ok : vec Event; Err : Error };
+type Result_7 = variant { Ok : vec Playlist; Err : text };
+type SongRequest = record {
+  id : nat64;
+  request_status : RequestStatus;
+  created_at : nat64;
+  user_id : nat64;
+  song_name : text;
+};
+type SongRequestPayload = record { user_id : nat64; song_name : text };
+type Tip = record {
+  id : nat64;
+  tip_status : TipStatus;
+  created_at : nat64;
+  user_id : nat64;
+  dj_name : text;
+  amount : nat64;
+};
+type TipPayload = record { user_id : nat64; dj_name : text; amount : nat64 };
+type TipStatus = variant { Completed; Pending };
+type User = record {
+  id : nat64;
+  status : UserStatus;
+  contact : text;
+  name : text;
+  role : UserRole;
+  created_at : nat64;
+  points : nat64;
+};
+type UserPayload = record { contact : text; name : text; role : UserRole };
+type UserRole = variant { DJ; RegularUser; Admin };
+type UserStatus = variant { Deactivated; Active };
+service : {
+  create_event : (EventPayload) -> (Result);
+  create_playlist : (PlaylistPayload) -> (Result_1);
+  create_rating : (RatingPayload) -> (Result_2);
+  create_song_request : (SongRequestPayload) -> (Result_3);
+  create_tip : (TipPayload) -> (Result_4);
+  create_user : (UserPayload) -> (Result_5);
+  get_all_events : () -> (Result_6) query;
+  get_event_by_name : (text) -> (Result) query;
+  get_playlist_by_dj_name : (text) -> (Result_7) query;
+  get_playlist_by_event_id : (nat64) -> (Result_7) query;
+  search_djs : (text, nat8, text) -> (vec LeaderboardEntry) query;
+  update_user_points : (nat64, nat64) -> (bool);
+}
