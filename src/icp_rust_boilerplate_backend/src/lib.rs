@@ -10,39 +10,30 @@ use std::cell::RefCell;
 type Memory = VirtualMemory<DefaultMemoryImpl>;
 type IdCell = Cell<u64, Memory>;
 
-// Enums for different features
-
-#[derive(
-    candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug,
-)]
+// Enums for different statuses
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
 enum RequestStatus {
     #[default]
     Pending,
     Played,
 }
 
-#[derive(
-    candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug,
-)]
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
 enum TipStatus {
     #[default]
     Pending,
     Completed,
 }
 
-#[derive(
-    candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug,
-)]
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
 enum UserStatus {
     #[default]
     Active,
     Deactivated,
 }
 
-// Define roles for users
-#[derive(
-    candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug,
-)]
+// User roles
+#[derive(candid::CandidType, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Default, Debug)]
 enum UserRole {
     #[default]
     RegularUser,
@@ -50,7 +41,7 @@ enum UserRole {
     DJ,
 }
 
-// User struct with roles
+// Structs for Users, Song Requests, Tips, Events, etc.
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct User {
     id: u64,
@@ -58,11 +49,10 @@ struct User {
     contact: String,
     created_at: u64,
     status: UserStatus,
-    role: UserRole, // User role field
+    role: UserRole,
     points: u64,
 }
 
-// Song Request struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct SongRequest {
     id: u64,
@@ -72,7 +62,6 @@ struct SongRequest {
     created_at: u64,
 }
 
-// Tip struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct Tip {
     id: u64,
@@ -83,7 +72,6 @@ struct Tip {
     created_at: u64,
 }
 
-// Event struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct Event {
     id: u64,
@@ -95,7 +83,6 @@ struct Event {
     created_at: u64,
 }
 
-// Playlist struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct Playlist {
     id: u64,
@@ -105,18 +92,16 @@ struct Playlist {
     created_at: u64,
 }
 
-// Rating struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct Rating {
     id: u64,
     user_id: u64,
     dj_name: String,
-    rating: u8, // Rating out of 5
+    rating: u8,
     review: String,
     created_at: u64,
 }
 
-// Leaderboard struct
 #[derive(candid::CandidType, Clone, Serialize, Deserialize, Default)]
 struct LeaderboardEntry {
     dj_name: String,
@@ -125,8 +110,7 @@ struct LeaderboardEntry {
     avg_rating: f64,
 }
 
-// Implement `Storable` and `BoundedStorable` for each struct
-
+// Implement Storable and BoundedStorable traits for structs
 impl Storable for User {
     fn to_bytes(&self) -> Cow<[u8]> {
         Cow::Owned(Encode!(&self).unwrap())
@@ -156,6 +140,7 @@ impl BoundedStorable for SongRequest {
     const MAX_SIZE: u32 = 256;
     const IS_FIXED_SIZE: bool = false;
 }
+
 
 impl Storable for Tip {
     fn to_bytes(&self) -> Cow<[u8]> {
@@ -280,12 +265,20 @@ thread_local! {
     ));
 }
 
-// Payloads
+// Playlist Payload
+#[derive(candid::CandidType, Deserialize, Serialize)]
+struct PlaylistPayload {
+    dj_name: String,
+    event_id: u64,
+    song_list: Vec<String>,
+}
+
+// Payload Structs for Inputs
 #[derive(candid::CandidType, Deserialize, Serialize)]
 struct UserPayload {
     name: String,
     contact: String,
-    role: UserRole, // Include role in payload
+    role: UserRole,
 }
 
 #[derive(candid::CandidType, Deserialize, Serialize)]
@@ -301,16 +294,6 @@ struct TipPayload {
     amount: u64,
 }
 
-// Event Payload
-#[derive(candid::CandidType, Deserialize, Serialize)]
-struct EventPayload {
-    event_name: String,
-    dj_name: String,
-    venue: String,
-    capacity: u64,
-    scheduled_at: u64,
-}
-
 // Rating Payload
 #[derive(candid::CandidType, Deserialize, Serialize)]
 struct RatingPayload {
@@ -320,15 +303,16 @@ struct RatingPayload {
     review: String,
 }
 
-// Playlist Payload
 #[derive(candid::CandidType, Deserialize, Serialize)]
-struct PlaylistPayload {
+struct EventPayload {
+    event_name: String,
     dj_name: String,
-    event_id: u64,
-    song_list: Vec<String>,
+    venue: String,
+    capacity: u64,
+    scheduled_at: u64,
 }
 
-// Error types
+// Error Enum
 #[derive(candid::CandidType, Deserialize, Serialize)]
 enum Error {
     NotFound { msg: String },
@@ -337,26 +321,22 @@ enum Error {
     Unauthorized { msg: String },
 }
 
+
 // CRUD Operations
 
+// CRUD Operations
 #[ic_cdk::update]
 fn create_user(payload: UserPayload) -> Result<User, Error> {
-    // Validate all the input fields
-    if payload.name.is_empty()
-        && payload.contact.is_empty()
-        && payload.role == UserRole::RegularUser
-    {
+    if payload.name.is_empty() || payload.contact.is_empty() {
         return Err(Error::InvalidInput {
-            msg: "Invalid input fields".to_string(),
+            msg: "Name and contact fields are required".to_string(),
         });
     }
 
-    let id = ID_COUNTER
-        .with(|counter| {
-            let current_value = *counter.borrow().get();
-            counter.borrow_mut().set(current_value + 1)
-        })
-        .expect("Cannot increment ID counter");
+    let id = ID_COUNTER.with(|counter| {
+        let current_value = *counter.borrow().get();
+        counter.borrow_mut().set(current_value + 1)
+    }).expect("Cannot increment ID counter");
 
     let user = User {
         id,
@@ -365,7 +345,7 @@ fn create_user(payload: UserPayload) -> Result<User, Error> {
         created_at: time(),
         status: UserStatus::Active,
         role: payload.role,
-        points: 0, // Initialize points to 0
+        points: 0,
     };
 
     USERS_STORAGE.with(|storage| {
@@ -373,6 +353,84 @@ fn create_user(payload: UserPayload) -> Result<User, Error> {
     });
 
     Ok(user)
+}
+
+// Example New Feature: Delete User
+#[ic_cdk::update]
+fn delete_user(user_id: u64) -> Result<(), Error> {
+    USERS_STORAGE.with(|storage| {
+        if storage.borrow_mut().remove(&user_id).is_none() {
+            return Err(Error::NotFound {
+                msg: format!("User with ID {} not found", user_id),
+            });
+        }
+        Ok(())
+    })
+}
+
+// Example New Feature: Search Users by Role
+#[ic_cdk::query]
+fn search_users_by_role(role: UserRole) -> Vec<User> {
+    USERS_STORAGE.with(|storage| {
+        storage.borrow().iter()
+            .filter(|(_, user)| user.role == role)
+            .map(|(_, user)| user.clone())
+            .collect()
+    })
+}
+
+// Pagination Helper
+fn paginate<T>(items: Vec<T>, page: usize, per_page: usize) -> Vec<T> {
+    let start = page.saturating_sub(1) * per_page;
+    let end = start + per_page;
+    items.into_iter().skip(start).take(per_page).collect()
+}
+
+// Example New Feature: Paginated Event Retrieval
+#[ic_cdk::query]
+fn get_paginated_events(page: usize, per_page: usize) -> Result<Vec<Event>, Error> {
+    EVENTS_STORAGE.with(|storage| {
+        let events: Vec<Event> = storage.borrow().iter().map(|(_, event)| event.clone()).collect();
+        if events.is_empty() {
+            return Err(Error::NotFound {
+                msg: "No events found".to_string(),
+            });
+        }
+        Ok(paginate(events, page, per_page))
+    })
+}
+
+// Example: Update Leaderboard after Rating
+#[ic_cdk::update]
+fn update_leaderboard_after_rating(dj_id: u64, new_rating: u8) -> Result<(), Error> {
+    LEADERBOARD_STORAGE.with(|storage| {
+        let mut storage = storage.borrow_mut();
+        if let Some(mut entry) = storage.get(&dj_id).map(|entry| entry.clone()) {
+            let new_total_ratings = entry.total_ratings + 1;
+            entry.avg_rating = (entry.avg_rating * entry.total_ratings as f64 + new_rating as f64) / new_total_ratings as f64;
+            entry.total_ratings = new_total_ratings;
+            storage.insert(dj_id, entry);  // Use dj_id as the key, not dj_name
+            Ok(())
+        } else {
+            Err(Error::NotFound {
+                msg: "DJ not found".to_string(),
+            })
+        }
+    })
+}
+
+
+// Example New Feature: Delete Event
+#[ic_cdk::update]
+fn delete_event(event_id: u64) -> Result<(), Error> {
+    EVENTS_STORAGE.with(|storage| {
+        if storage.borrow_mut().remove(&event_id).is_none() {
+            return Err(Error::NotFound {
+                msg: format!("Event with ID {} not found", event_id),
+            });
+        }
+        Ok(())
+    })
 }
 
 // Create song request function
