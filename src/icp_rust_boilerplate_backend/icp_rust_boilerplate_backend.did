@@ -59,8 +59,9 @@ type Result_2 = variant { Ok : Rating; Err : Error };
 type Result_3 = variant { Ok : SongRequest; Err : Error };
 type Result_4 = variant { Ok : Tip; Err : Error };
 type Result_5 = variant { Ok : User; Err : Error };
-type Result_6 = variant { Ok : vec Event; Err : Error };
-type Result_7 = variant { Ok : vec Playlist; Err : text };
+type Result_6 = variant { Ok; Err : Error };
+type Result_7 = variant { Ok : vec Event; Err : Error };
+type Result_8 = variant { Ok : vec Playlist; Err : text };
 type SongRequest = record {
   id : nat64;
   request_status : RequestStatus;
@@ -98,10 +99,15 @@ service : {
   create_song_request : (SongRequestPayload) -> (Result_3);
   create_tip : (TipPayload) -> (Result_4);
   create_user : (UserPayload) -> (Result_5);
-  get_all_events : () -> (Result_6) query;
+  delete_event : (nat64) -> (Result_6);
+  delete_user : (nat64) -> (Result_6);
+  get_all_events : () -> (Result_7) query;
   get_event_by_name : (text) -> (Result) query;
-  get_playlist_by_dj_name : (text) -> (Result_7) query;
-  get_playlist_by_event_id : (nat64) -> (Result_7) query;
+  get_paginated_events : (nat64, nat64) -> (Result_7) query;
+  get_playlist_by_dj_name : (text) -> (Result_8) query;
+  get_playlist_by_event_id : (nat64) -> (Result_8) query;
   search_djs : (text, nat8, text) -> (vec LeaderboardEntry) query;
+  search_users_by_role : (UserRole) -> (vec User) query;
+  update_leaderboard_after_rating : (nat64, nat8) -> (Result_6);
   update_user_points : (nat64, nat64) -> (bool);
 }
